@@ -33,7 +33,7 @@ import com.example.demo.redis.RedisService;
 public class UserController {
 
 	@Autowired
-	UserMapper userMapper;
+	private UserMapper userMapper;
 	
 	@Autowired
 	private AuthenticationManager authenticationManager;
@@ -49,12 +49,23 @@ public class UserController {
 	
 	@GetMapping("/{username}")
 	@ResponseStatus(HttpStatus.OK)
-	public UserResponse findByUsername(@PathVariable String username) {
+	public ResponseEntity<?> findByUsername(@PathVariable String username, Authentication authentication) {
 		
-		return userMapper.findByUsername(username);
+		ResponseEntity<?> accessError = validateUserAccess(username, authentication);
+        if (accessError != null) return accessError;
+		
+		UserResponse user = userMapper.findByUsername(username);
+		if (user == null) {
+			
+			return ResponseEntity.status(HttpStatus.NOT_FOUND)
+					.body("ユーザーが存在しません。");
+		}
+		
+		return ResponseEntity.ok(user);
 	}
 	
-	@PostMapping
+	// 登録
+	@PostMapping("/register")
 	@ResponseStatus(HttpStatus.CREATED)
 	@Transactional
 	public UserResponse doPost(@RequestBody UserRequest userRequest) {
@@ -68,18 +79,28 @@ public class UserController {
 	@PutMapping("/{username}")
 	@ResponseStatus(HttpStatus.OK)
 	@Transactional
-	public UserResponse doPut(@PathVariable String username, @RequestBody UserRequest userRequest) {
+	public ResponseEntity<?> updateUser(@PathVariable String username, @RequestBody UserRequest userRequest, Authentication authentication) {
+
+		ResponseEntity<?> accessError = validateUserAccess(username, authentication);
+        if (accessError != null) return accessError;
+
 		userRequest.setUsername(username);
 		userMapper.update(userRequest);
-		
-		return userMapper.findByUsername(username);
+
+		return ResponseEntity.ok(userMapper.findByUsername(username));
 	}
+
 	
 	@DeleteMapping("/{username}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
 	@Transactional
-	public void doDelete(@PathVariable String username) {
+	public ResponseEntity<?> deleteUser(@PathVariable String username, Authentication authentication) {
+
+		ResponseEntity<?> accessError = validateUserAccess(username, authentication);
+        if (accessError != null) return accessError;
+
 		userMapper.delete(username);
+		return ResponseEntity.ok(username + "のアカウントを削除しました。");
 	}
 	
 	// ログイン処理
@@ -100,20 +121,44 @@ public class UserController {
 	
 	// ログアウト処理
 	@PostMapping("/logout")
-	public ResponseEntity<?> logout(HttpServletRequest request) {
-		String authHeader = request.getHeader("Authorization");
-		
-		if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-			
-			return ResponseEntity.badRequest().body("トークンが存在しません。");
+	public ResponseEntity<?> logout(HttpServletRequest request, Authentication authentication) {
+		try {
+			String token = extractToken(request);
+			String username = authentication.getName();
+
+			long expiration = jwtUtil.getExpirationDate(token).getTime() - System.currentTimeMillis();
+			redisService.addToBlacklist(token, expiration);
+
+			return ResponseEntity.ok(username + "のログアウトが完了しました。トークンは無効化されました。");
+
+		} catch (IllegalArgumentException e) {
+			return ResponseEntity.badRequest().body(e.getMessage());
 		}
+	}
+	
+	// Bearerトークン抽出メソッド
+	private String extractToken(HttpServletRequest request) {
+		String authHeader = request.getHeader("Authorization");
+				
+		if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+					
+			throw new IllegalArgumentException("トークンが存在しません。");
+		}
+		return authHeader.substring(7);
+	}
+	
+	// ユーザーチェック
+	private ResponseEntity<String> validateUserAccess(String username, Authentication authentication) {
+		// JWTから取得したユーザー名
+		String loginUsername = authentication.getName();
 		
-		String token = authHeader.substring(7);
-		long expiration = jwtUtil.getExpirationDate(token).getTime() - System.currentTimeMillis();
-		
-		redisService.addToBlacklist(token, expiration);
-		
-		return ResponseEntity.ok("ログアウトしました。トークンは無効化されました。");
+		// 自分以外のユーザーがアクセスしていないか
+		if(!loginUsername.equals(username)) {
+			
+			return ResponseEntity.status(HttpStatus.FORBIDDEN)
+					.body("他のユーザー情報へのアクセスは許可されていません。");
+		}
+		return null;
 	}
 
 }

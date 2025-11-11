@@ -32,7 +32,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter{
 	@Override
     protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {
         String path = request.getServletPath();
-        return path.startsWith("/user"); // permitAll に合わせる
+        
+        return path.startsWith("/user/login") || path.startsWith("/user/register"); // permitAll に合わせる
 	}
 
 	// リクエストごとに1回だけ呼ばれるフィルター

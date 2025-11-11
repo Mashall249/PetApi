@@ -1,0 +1,51 @@
+DROP TABLE IF EXISTS orders;
+DROP TABLE IF EXISTS pet;
+DROP TABLE IF EXISTS category;
+DROP TABLE IF EXISTS tag;
+DROP TABLE IF EXISTS user;
+
+-- カテゴリーテーブル
+CREATE TABLE category(
+	id		INTEGER PRIMARY KEY AUTO_INCREMENT,
+	name	VARCHAR(255)
+);
+
+-- タグテーブル
+CREATE TABLE tag(
+	id		INTEGER PRIMARY KEY AUTO_INCREMENT,
+	name	VARCHAR(255)
+);
+
+-- ペットテーブル
+CREATE TABLE pet(
+	id			INTEGER PRIMARY KEY AUTO_INCREMENT,
+	category_id	INTEGER,
+	tag_id		INTEGER,
+	name		VARCHAR(255),
+	photoUrls	VARCHAR(255),
+	status		VARCHAR(10) DEFAULT 'AVAILABLE',
+	FOREIGN KEY (category_id)	REFERENCES category(id),
+	FOREIGN KEY (tag_id)		REFERENCES tag(id)
+);
+
+-- オーダーテーブル
+CREATE TABLE orders(
+	id			INTEGER PRIMARY KEY AUTO_INCREMENT,
+	pet_id		INTEGER,
+	quantity	INTEGER,
+	shipDate	DATETIME	DEFAULT CURRENT_TIMESTAMP,
+	status		VARCHAR(10) DEFAULT 'PLACED',
+	complete	VARCHAR(5)	DEFAULT 'false',
+	FOREIGN KEY (pet_id)	REFERENCES pet(id)
+);
+
+CREATE TABLE user(
+	id			INTEGER PRIMARY KEY AUTO_INCREMENT,
+	username	VARCHAR(255),
+	firstName	VARCHAR(255),
+	lastName	VARCHAR(255),
+	email		VARCHAR(255),
+	password	VARCHAR(255),
+	phone		VARCHAR(255),
+	userStatus	INTEGER DEFAULT 1
+);

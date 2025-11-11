@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.demo.mapper.PetMapper">
+	<select id = "findById" resultType = "com.example.demo.dto.PetResponse">
+
+		SELECT		p.id, c.name AS categoryName, p.name AS petName, p.photoUrls, t.name AS tagName, p.status
+		FROM		pet p
+		INNER JOIN	category c
+		ON			p.category_id = c.id
+		INNER JOIN	tag t
+		ON			p.tag_id = t.id
+		WHERE 		p.id = #{id}
+
+	</select>
+	
+	<select id = "findAll" resultType = "com.example.demo.dto.PetResponse">
+
+		SELECT		p.id, c.name AS categoryName, p.name AS petName, p.photoUrls, t.name AS tagName, p.status
+		FROM		pet p
+		INNER JOIN	category c
+		ON			p.category_id = c.id
+		INNER JOIN	tag t
+		ON			p.tag_id = t.id
+		ORDER BY	p.id
+
+	</select>
+	
+	<insert id = "insert" useGeneratedKeys="true" keyProperty="id">
+
+		INSERT INTO pet (category_id, name, photoUrls, tag_id, status)
+		VALUES	(
+			(SELECT id FROM category WHERE name = #{categoryName}),
+			#{petName},
+			#{photoUrls},
+			(SELECT id FROM tag WHERE name =#{tagName}),
+			#{status})
+
+	</insert>
+	
+	<update id="update">
+	
+		UPDATE	pet
+		SET		name = CASE		WHEN #{petName} IS NOT NULL	THEN #{petName}	ELSE name END,
+				status = CASE	WHEN #{status} IS NOT NULL	THEN #{status}	ELSE status END
+		WHERE	id = #{id}
+
+	</update>
+	
+	<delete id="delete">
+
+		DELETE
+		FROM	pet
+		WHERE	id = #{id}
+
+	</delete>
+</mapper>

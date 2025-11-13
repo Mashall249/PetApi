@@ -49,7 +49,7 @@ public class OrderController {
 	@PostMapping
 	@ResponseStatus(HttpStatus.CREATED)
 	public OrderResponse doPost(@Valid @RequestBody OrderRequest orderRequest) {
-		 PetResponse pet = petMapper.findById(orderRequest.getPetId());
+		PetResponse pet = petMapper.findById(orderRequest.getPetId());
 		    if (pet == null) {
 		        throw new BadRequestException("指定されたpetId " + orderRequest.getPetId() + " は存在しません。");
 		    }

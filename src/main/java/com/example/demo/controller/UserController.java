@@ -47,6 +47,7 @@ public class UserController {
 	@Autowired
 	private RedisService redisService;
 	
+	// ユーザー参照
 	@GetMapping("/{username}")
 	@ResponseStatus(HttpStatus.OK)
 	public ResponseEntity<?> findByUsername(@PathVariable String username, Authentication authentication) {
@@ -76,6 +77,7 @@ public class UserController {
 		return userMapper.findByUsername(userRequest.getUsername());
 	}
 	
+	// ユーザー更新
 	@PutMapping("/{username}")
 	@ResponseStatus(HttpStatus.OK)
 	@Transactional
@@ -90,7 +92,7 @@ public class UserController {
 		return ResponseEntity.ok(userMapper.findByUsername(username));
 	}
 
-	
+	// ユーザー削除
 	@DeleteMapping("/{username}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
 	@Transactional

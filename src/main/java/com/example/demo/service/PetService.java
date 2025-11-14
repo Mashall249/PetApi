@@ -1,0 +1,108 @@
+package com.example.demo.service;
+
+import java.util.List;
+import java.util.stream.Collectors;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
+
+import com.example.demo.dto.PetRequest;
+import com.example.demo.dto.PetResponse;
+import com.example.demo.exception.BadRequestException;
+import com.example.demo.exception.ResourceNotFoundException;
+import com.example.demo.repository.PetRepository;
+
+import lombok.RequiredArgsConstructor;
+
+@Service
+@RequiredArgsConstructor
+public class PetService {
+
+	private final PetRepository petRepository;
+	
+	// 1件検索処理
+	@Transactional(readOnly = true)	// Transactionは基本serviceでの記述を
+	public PetResponse findById(@PathVariable int id) { 	//戻り値はpetResponseで
+		PetResponse pet = findByIdOrThrow(id);
+		
+		return pet;
+	}
+	
+	// 全件検索処理
+	public List<PetResponse> getPets(
+			@RequestParam(required = false) String findByStatus,
+			@RequestParam(required = false) String findByTags) {
+		
+		List<PetResponse> petResponseList = petRepository.findAll();
+		
+		List<PetResponse> filtered = filterPet(findByStatus, findByTags, petResponseList);
+		
+		// フィルタリング時のエラー
+		if (filtered.isEmpty() ) {
+			throw new ResourceNotFoundException("該当するペットが見つかりませんでした");
+		}
+		
+		return filtered;
+		
+	}
+	
+	// 登録処理
+	@Transactional
+	public PetResponse post(@RequestBody PetRequest petRequest) {
+		
+		if (petRequest.getPetName() == null || petRequest.getPetName().isBlank()) {
+			throw new BadRequestException("名前を入力してください");
+		}
+		
+		if (petRequest.getStatus() == null) {
+			throw new BadRequestException("ステータスを入力してください");
+		}
+		
+		petRepository.create(petRequest);
+		return petRepository.findById(petRequest.getId());
+	}
+	// 更新処理
+	@Transactional
+	public PetResponse put(@PathVariable int id, @RequestBody PetRequest petRequest) {
+		findByIdOrThrow(id);
+		
+		petRequest.setId(id);
+		petRepository.update(petRequest);
+		
+		return petRepository.findById(id);
+	}
+	
+	// 削除処理
+	@Transactional
+	public void delete(@PathVariable int id) {
+		int deleteCount = petRepository.delete(id);
+		
+		if(deleteCount == 0) {
+			throw new ResourceNotFoundException("指定されたペットのID " + id + " が見つかりません");
+		}
+	}
+	
+	//フィルタリング
+		private List<PetResponse> filterPet(String findByStatus, String findByTags, List<PetResponse> petResponseList) {
+
+			return petResponseList.stream()
+					.filter(pet -> findByStatus == null
+		                    || pet.getStatus().name().equalsIgnoreCase(findByStatus)
+		                    || pet.getStatus().getLabel().equals(findByStatus))
+					.filter(pet -> findByTags == null
+							|| pet.getTagName().contains(findByTags))
+					.collect(Collectors.toList());
+		}
+	
+	//404エラーメソッド
+		private PetResponse findByIdOrThrow(int id) {
+			PetResponse pet = petRepository.findById(id);
+			if( pet == null) {
+				throw new ResourceNotFoundException("指定されたペットのID " + id + " が見つかりません");
+			}
+			return pet;
+		}
+}

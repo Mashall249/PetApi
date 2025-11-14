@@ -1,7 +1,6 @@
 package com.example.demo.service;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -94,7 +93,7 @@ public class PetService {
 		                    || pet.getStatus().getLabel().equals(findByStatus))
 					.filter(pet -> findByTags == null
 							|| pet.getTagName().contains(findByTags))
-					.collect(Collectors.toList());
+					.toList();
 		}
 	
 	//404エラーメソッド

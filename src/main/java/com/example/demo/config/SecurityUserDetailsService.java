@@ -5,20 +5,19 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
-import com.example.demo.mapper.UserMapper;
+import com.example.demo.repository.UserRepository;
+
+import lombok.RequiredArgsConstructor;
 
 @Service
+@RequiredArgsConstructor
 public class SecurityUserDetailsService implements UserDetailsService {
 
-	private final UserMapper userMapper;
-	
-	public SecurityUserDetailsService(UserMapper userMapper) {
-		this.userMapper = userMapper;
-	}
+	private final UserRepository userRepository;
 	
 	@Override
 	public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-		var user = userMapper.findByUsername(username);
+		var user = userRepository.get(username);
 		
 		if (user == null) {
 			throw new UsernameNotFoundException("ユーザーが見つかりません: " + username);

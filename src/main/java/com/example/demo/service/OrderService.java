@@ -1,12 +1,8 @@
 package com.example.demo.service;
 
-import jakarta.validation.Valid;
-
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestBody;
 
 import com.example.demo.dto.OrderRequest;
 import com.example.demo.dto.OrderResponse;
@@ -27,7 +23,7 @@ public class OrderService {
 	private final PetRepository petRepository;
 	
 	@Transactional(readOnly = true)
-	public OrderResponse get(@PathVariable int id) {
+	public OrderResponse get(int id) {
 		Order order = orderRepository.get(id);
 		
 		if( order == null) {
@@ -38,7 +34,7 @@ public class OrderService {
 	}
 	
 	@Transactional
-	public OrderResponse post(@Valid @RequestBody OrderRequest orderRequest) {
+	public OrderResponse create(OrderRequest orderRequest) {
 		PetResponse pet = petRepository.findById(orderRequest.getPetId());
 		    if (pet == null) {
 		        throw new BadRequestException("指定されたpetId " + orderRequest.getPetId() + " は存在しません。");
@@ -54,7 +50,7 @@ public class OrderService {
 	}
 	
 	@Transactional
-	public void delete(@PathVariable int id) {
+	public void delete(int id) {
 		int deleteCount = orderRepository.delete(id);
 		
 		if(deleteCount == 0) {

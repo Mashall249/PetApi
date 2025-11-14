@@ -29,7 +29,7 @@ public class UserController {
 	
 	// ユーザー参照
 	@GetMapping("/{username}")
-	public ResponseEntity<?> findByUsername(@PathVariable String username, Authentication authentication) {
+	public ResponseEntity<?> findUserByUsername(@PathVariable String username, Authentication authentication) {
 		return ResponseEntity.ok(userService.get(username, authentication));
 	}
 	

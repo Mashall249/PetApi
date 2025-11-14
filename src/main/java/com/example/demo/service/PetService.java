@@ -4,9 +4,6 @@ import java.util.List;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestParam;
 
 import com.example.demo.dto.PetRequest;
 import com.example.demo.dto.PetResponse;
@@ -24,16 +21,14 @@ public class PetService {
 	
 	// 1件検索処理
 	@Transactional(readOnly = true)	// Transactionは基本serviceでの記述を
-	public PetResponse findById(@PathVariable int id) { 	//戻り値はpetResponseで
+	public PetResponse findById(int id) { 	//戻り値はpetResponseで
 		PetResponse pet = findByIdOrThrow(id);
 		
 		return pet;
 	}
 	
 	// 全件検索処理
-	public List<PetResponse> getPets(
-			@RequestParam(required = false) String findByStatus,
-			@RequestParam(required = false) String findByTags) {
+	public List<PetResponse> getPets(String findByStatus, String findByTags) {
 		
 		List<PetResponse> petResponseList = petRepository.findAll();
 		
@@ -50,7 +45,7 @@ public class PetService {
 	
 	// 登録処理
 	@Transactional
-	public PetResponse post(@RequestBody PetRequest petRequest) {
+	public PetResponse post(PetRequest petRequest) {
 		
 		if (petRequest.getPetName() == null || petRequest.getPetName().isBlank()) {
 			throw new BadRequestException("名前を入力してください");
@@ -65,7 +60,7 @@ public class PetService {
 	}
 	// 更新処理
 	@Transactional
-	public PetResponse put(@PathVariable int id, @RequestBody PetRequest petRequest) {
+	public PetResponse put(int id, PetRequest petRequest) {
 		findByIdOrThrow(id);
 		
 		petRequest.setId(id);
@@ -76,7 +71,7 @@ public class PetService {
 	
 	// 削除処理
 	@Transactional
-	public void delete(@PathVariable int id) {
+	public void delete(int id) {
 		int deleteCount = petRepository.delete(id);
 		
 		if(deleteCount == 0) {

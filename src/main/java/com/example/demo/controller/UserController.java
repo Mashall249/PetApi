@@ -2,7 +2,6 @@ package com.example.demo.controller;
 
 import jakarta.servlet.http.HttpServletRequest;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -13,58 +12,55 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.demo.dto.LoginRequest;
 import com.example.demo.dto.UserRequest;
-import com.example.demo.dto.UserResponse;
 import com.example.demo.service.UserService;
+
+import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/user")
+@RequiredArgsConstructor
 public class UserController {
 	
-	@Autowired
-	UserService userService;
+	private final UserService userService;
 	
 	// ユーザー参照
 	@GetMapping("/{username}")
-	@ResponseStatus(HttpStatus.OK)
 	public ResponseEntity<?> findByUsername(@PathVariable String username, Authentication authentication) {
-		return userService.get(username, authentication);
+		return ResponseEntity.ok(userService.get(username, authentication));
 	}
 	
 	// 登録
 	@PostMapping("/register")
-	@ResponseStatus(HttpStatus.CREATED)
-	public UserResponse registerUser(@RequestBody UserRequest userRequest) {
-		return userService.post(userRequest);
+	public ResponseEntity<?> registerUser(@RequestBody UserRequest userRequest) {
+		return ResponseEntity.status(HttpStatus.CREATED).body(userService.create(userRequest));
 	}
 	
 	// ユーザー更新
 	@PutMapping("/{username}")
-	@ResponseStatus(HttpStatus.OK)
 	public ResponseEntity<?> updateUser(@PathVariable String username, @RequestBody UserRequest userRequest, Authentication authentication) {
-		return userService.update(username, userRequest, authentication);
+		return ResponseEntity.ok(userService.update(username, userRequest, authentication));
 	}
 
 	// ユーザー削除
 	@DeleteMapping("/{username}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-	public ResponseEntity<?> deleteUser(@PathVariable String username, Authentication authentication) {
-		return userService.delete(username, authentication);
+	public ResponseEntity<Void> deleteUser(@PathVariable String username, Authentication authentication) {
+		userService.delete(username, authentication);
+		return ResponseEntity.noContent().build();
 	}
 	
 	// ログイン処理
 	@PostMapping("/login")
 	public ResponseEntity<?> loginUser(@RequestBody LoginRequest loginRequest) {
-		return userService.login(loginRequest);
+		return ResponseEntity.ok(userService.login(loginRequest));
 	}
 	
 	// ログアウト処理
 	@PostMapping("/logout")
 	public ResponseEntity<?> logoutUser(HttpServletRequest request, Authentication authentication) {
-		return userService.logout(request, authentication);
+		return ResponseEntity.ok(userService.logout(request, authentication));
 	}
 }

@@ -2,8 +2,6 @@ package com.example.demo.service;
 
 import jakarta.servlet.http.HttpServletRequest;
 
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -11,8 +9,6 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestBody;
 
 import com.example.demo.dto.LoginRequest;
 import com.example.demo.dto.UserRequest;
@@ -23,6 +19,9 @@ import com.example.demo.repository.UserRepository;
 
 import lombok.RequiredArgsConstructor;
 
+
+// Webのアノテーション(@PathVariable, @RequestBody,etc)は含めない
+// 基本は素の値を
 @Service
 @RequiredArgsConstructor
 public class UserService {
@@ -35,24 +34,20 @@ public class UserService {
 	
 	// ユーザー参照処理
 	@Transactional(readOnly = true)
-	public ResponseEntity<?> get(@PathVariable String username, Authentication authentication) {
-		
-	ResponseEntity<?> accessError = validateUserAccess(username, authentication);
-		if (accessError != null) return accessError;
+	public UserResponse get(String username, Authentication authentication) {
+		validateUserAccess(username, authentication);
 
 		UserResponse user = userRepository.get(username);
 		if (user == null) {
-
-			return ResponseEntity.status(HttpStatus.NOT_FOUND)
-					.body("ユーザーが存在しません。");
+			throw new RuntimeException("ユーザーが存在しません。");
 		}
 
-		return ResponseEntity.ok(user);
+		return user;
 	}
 		
 	// 登録処理
 	@Transactional
-	public UserResponse post(@RequestBody UserRequest userRequest) {
+	public UserResponse create(UserRequest userRequest) {
 
 		userRequest.setPassword(passwordEncoder.encode(userRequest.getPassword()));
 		userRepository.create(userRequest);
@@ -62,30 +57,27 @@ public class UserService {
 		
 	// ユーザー更新
 	@Transactional
-	public ResponseEntity<?> update(@PathVariable String username, @RequestBody UserRequest userRequest, Authentication authentication) {
+	public UserResponse update(String username, UserRequest userRequest, Authentication authentication) {
 
-		ResponseEntity<?> accessError = validateUserAccess(username, authentication);
-		if (accessError != null) return accessError;
+		validateUserAccess(username, authentication);
 
 		userRequest.setUsername(username);
 		userRepository.update(userRequest);
 
-		return ResponseEntity.ok(userRepository.get(username));
+		return userRepository.get(username);
 	}
 
 	// ユーザー削除
 	@Transactional
-	public ResponseEntity<?> delete(@PathVariable String username, Authentication authentication) {
+	public void delete(String username, Authentication authentication) {
 
-		ResponseEntity<?> accessError = validateUserAccess(username, authentication);
-		if (accessError != null) return accessError;
+		validateUserAccess(username, authentication);
 
 		userRepository.delete(username);
-		return ResponseEntity.ok(username + "のアカウントを削除しました。");
 	}
 		
 	// ログイン処理
-	public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest) {
+	public String login(LoginRequest loginRequest) {
 
 		Authentication auth = authenticationManager.authenticate(
 			new UsernamePasswordAuthenticationToken(loginRequest.getUsername(), loginRequest.getPassword())
@@ -94,25 +86,19 @@ public class UserService {
 		UserDetails userDetails = (UserDetails) auth.getPrincipal();
 
 		// トークンを生成して返却
-		String token = jwtUtil.generateToken(userDetails.getUsername());
-
-		return ResponseEntity.ok("ログイン成功。トークン: " + token);
+		return jwtUtil.generateToken(userDetails.getUsername());
 	}
 		
 	// ログアウト処理
-	public ResponseEntity<?> logout(HttpServletRequest request, Authentication authentication) {
-		try {
-			String token = extractToken(request);
-			String username = authentication.getName();
+	public String logout(HttpServletRequest request, Authentication authentication) {
 
-			long expiration = jwtUtil.getExpirationDate(token).getTime() - System.currentTimeMillis();
-			redisService.addToBlacklist(token, expiration);
+		String token = extractToken(request);
+		String username = authentication.getName();
 
-			return ResponseEntity.ok(username + "のログアウトが完了しました。トークンは無効化されました。");
+		long expiration = jwtUtil.getExpirationDate(token).getTime() - System.currentTimeMillis();
+		redisService.addToBlacklist(token, expiration);
 
-		} catch (IllegalArgumentException e) {
-			return ResponseEntity.badRequest().body(e.getMessage());
-		}
+		return username + "のログアウトが完了しました。トークンは無効化されました。";
 	}
 		
 	// Bearerトークン抽出メソッド
@@ -127,16 +113,13 @@ public class UserService {
 	}
 		
 	// ユーザーチェック
-	private ResponseEntity<String> validateUserAccess(String username, Authentication authentication) {
+	private void validateUserAccess(String username, Authentication authentication) {
 		// JWTから取得したユーザー名
 		String loginUsername = authentication.getName();
 
 		// 自分以外のユーザーがアクセスしていないか
 		if(!loginUsername.equals(username)) {
-
-			return ResponseEntity.status(HttpStatus.FORBIDDEN)
-					.body("他のユーザー情報へのアクセスは許可されていません。");
+			throw new RuntimeException("他のユーザー情報へのアクセスは許可されていません。");
 		}
-		return null;
 	}
 }

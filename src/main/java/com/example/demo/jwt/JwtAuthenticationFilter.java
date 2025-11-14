@@ -7,7 +7,6 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -17,17 +16,15 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import com.example.demo.config.SecurityUserDetailsService;
 import com.example.demo.redis.RedisService;
 
+import lombok.RequiredArgsConstructor;
+
 @Component
+@RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter{
 	
-	@Autowired
-	private JwtUtil jwtUtil;	// トークンの検証用
-	
-	@Autowired
-	private SecurityUserDetailsService userDetailsService;	// ユーザー情報のロード
-	
-	@Autowired
-	private RedisService redisService;	// Redisブラックリスト
+	private final JwtUtil jwtUtil;	// トークンの検証用
+	private final SecurityUserDetailsService userDetailsService;	// ユーザー情報のロード
+	private final RedisService redisService;	// Redisブラックリスト
 	
 	@Override
     protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {

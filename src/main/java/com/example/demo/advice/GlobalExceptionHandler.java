@@ -8,7 +8,9 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 
 import com.example.demo.exception.BadRequestException;
+import com.example.demo.exception.ForbiddenException;
 import com.example.demo.exception.ResourceNotFoundException;
+import com.example.demo.exception.UnauthorizedException;
 
 @ControllerAdvice
 public class GlobalExceptionHandler {
@@ -16,14 +18,10 @@ public class GlobalExceptionHandler {
 	// BadRequest(400)
 	@ExceptionHandler(BadRequestException.class)
 	public ResponseEntity<ApiResponse> handleBadRequest(BadRequestException ex) {
-		ApiResponse response = new ApiResponse();
-		response.setCode(HttpStatus.BAD_REQUEST.value());
-		response.setType("BadRequest");
-		response.setMessage(ex.getMessage());
-		return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+		return buildResponse(HttpStatus.BAD_REQUEST, "BadRequest", ex.getMessage());
 	}
 	
-	// NotValid(400)
+	// ValidationError(400)
 	@ExceptionHandler(MethodArgumentNotValidException.class)
 	public ResponseEntity<ApiResponse> handleValidationExceptions(MethodArgumentNotValidException ex) {
 	    String message = ex.getBindingResult()
@@ -33,30 +31,54 @@ public class GlobalExceptionHandler {
 	            .findFirst()
 	            .orElse("不正なリクエストです。");
 
-	    ApiResponse response = new ApiResponse();
-	    response.setCode(HttpStatus.BAD_REQUEST.value());
-	    response.setType("Validation Error");
-	    response.setMessage(message);
-	    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+	    return buildResponse(HttpStatus.BAD_REQUEST, "Validation Error", message);
+	}
+	
+	// IllegalArgument(400)
+	@ExceptionHandler(IllegalArgumentException.class)
+	public ResponseEntity<ApiResponse> handleIllegalArgument(IllegalArgumentException ex) {
+		return buildResponse(HttpStatus.BAD_REQUEST, "InvalidArgument", ex.getMessage());
+		
+	}
+	// Unauthorized(401)
+	@ExceptionHandler(UnauthorizedException.class)
+	public ResponseEntity<ApiResponse> handleUnauthorized(UnauthorizedException ex) {
+		return buildResponse(HttpStatus.UNAUTHORIZED, "Unauthorized", ex.getMessage());
+	}
+	
+	// Forbidden(403)
+	@ExceptionHandler(ForbiddenException.class)
+	public ResponseEntity<ApiResponse> handleForbidden(ForbiddenException ex) {
+		return buildResponse(HttpStatus.FORBIDDEN, "Forbidden", ex.getMessage());
 	}
 	
 	// NotFound(404)
 	@ExceptionHandler(ResourceNotFoundException.class)
-	public ResponseEntity<ApiResponse> handleBadRequest(ResourceNotFoundException ex) {
-		ApiResponse response = new ApiResponse();
-		response.setCode(HttpStatus.NOT_FOUND.value());
-		response.setType("NotFound");
-		response.setMessage(ex.getMessage());
-		return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+	public ResponseEntity<ApiResponse> handleNotFound(ResourceNotFoundException ex) {
+		return buildResponse(HttpStatus.NOT_FOUND, "NotFound", ex.getMessage());
 	}
 	
 	// NotMethodSupport(405)
 	@ExceptionHandler(HttpRequestMethodNotSupportedException.class)
-	public ResponseEntity<ApiResponse> handleBadRequest(HttpRequestMethodNotSupportedException ex) {
-		ApiResponse response = new ApiResponse();
-		response.setCode(HttpStatus.METHOD_NOT_ALLOWED.value());
-		response.setType("MethodNotAllowed");
-		response.setMessage("このエンドポイントではメソッド " + ex.getMethod() + " は許可されていません。");
-		return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED).body(response);
+	public ResponseEntity<ApiResponse> handleMethodNotAllowed(HttpRequestMethodNotSupportedException ex) {
+		String message = "このエンドポイントではメソッド " + ex.getMethod() + " は許可されていません。";
+		
+		return buildResponse(HttpStatus.METHOD_NOT_ALLOWED, "MethodNotAllowed", message);
 	}
+	
+	// Exception(500)
+	@ExceptionHandler(Exception.class)
+	public ResponseEntity<ApiResponse> handleGeneralError(Exception ex) {
+		return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, "ServerError", "サーバー内部でエラーが発生しました。");
+	}
+	
+	// 共通レスポンス生成
+	private ResponseEntity<ApiResponse> buildResponse(HttpStatus status, String type, String message) {
+        ApiResponse response = new ApiResponse();
+        response.setCode(status.value());
+        response.setType(type);
+        response.setMessage(message);
+
+        return ResponseEntity.status(status).body(response);
+    }
 }

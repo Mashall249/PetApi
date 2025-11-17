@@ -11,20 +11,21 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
+import com.example.demo.jwt.JwtAccessDeniedHandler;
+import com.example.demo.jwt.JwtAuthenticationEntryPoint;
 import com.example.demo.jwt.JwtAuthenticationFilter;
+
+import lombok.RequiredArgsConstructor;
 
 @Configuration
 @EnableWebSecurity
+@RequiredArgsConstructor
 public class SecurityConfig {
 	
 	private final JwtAuthenticationFilter jwtFilter;
     private final SecurityUserDetailsService userDetailsService;
-
-    public SecurityConfig(JwtAuthenticationFilter jwtFilter,
-                          SecurityUserDetailsService userDetailsService) {
-        this.jwtFilter = jwtFilter;
-        this.userDetailsService = userDetailsService;
-    }
+    private final JwtAuthenticationEntryPoint authenticationEntryPoint;
+    private final JwtAccessDeniedHandler accessDeniedHandler;
     
 	@Bean
     public PasswordEncoder passwordEncoder() {
@@ -46,6 +47,10 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
             .csrf(csrf -> csrf.disable())
+            .exceptionHandling(ex -> ex
+            		.authenticationEntryPoint(authenticationEntryPoint)	// 401
+            		.accessDeniedHandler(accessDeniedHandler)			// 403
+            	)
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/user/login", "/user/register").permitAll()
                 .requestMatchers("/user/**").authenticated()

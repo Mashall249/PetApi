@@ -8,19 +8,17 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 
 @Getter
+@RequiredArgsConstructor
 public class SecurityUserDetails implements UserDetails {
 
 	private final String username;
 	private final String password;
 	private final boolean enabled;
 	
-	public SecurityUserDetails(String username, String password, boolean enabled) {
-		this.username = username;
-		this.password = password;
-		this.enabled = enabled;
-	}
+
 
 	@Override
 	public Collection<? extends GrantedAuthority> getAuthorities() {

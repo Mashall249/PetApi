@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.example.demo.dto.LoginRequest;
 import com.example.demo.dto.UserRequest;
 import com.example.demo.dto.UserResponse;
+import com.example.demo.exception.UnauthorizedException;
 import com.example.demo.jwt.JwtUtil;
 import com.example.demo.redis.RedisService;
 import com.example.demo.repository.UserRepository;
@@ -77,6 +78,7 @@ public class UserService {
 	}
 		
 	// ログイン処理
+	@Transactional
 	public String login(LoginRequest loginRequest) {
 
 		Authentication auth = authenticationManager.authenticate(
@@ -90,10 +92,11 @@ public class UserService {
 	}
 		
 	// ログアウト処理
+	@Transactional
 	public String logout(HttpServletRequest request, Authentication authentication) {
 
 		String token = extractToken(request);
-		String username = authentication.getName();
+		String username = (authentication != null) ? authentication.getName() : "Unknown User";
 
 		long expiration = jwtUtil.getExpirationDate(token).getTime() - System.currentTimeMillis();
 		redisService.addToBlacklist(token, expiration);
@@ -107,7 +110,7 @@ public class UserService {
 
 		if (authHeader == null || !authHeader.startsWith("Bearer ")) {
 
-			throw new IllegalArgumentException("トークンが存在しません。");
+			throw new UnauthorizedException("トークンが存在しません。");
 		}
 		return authHeader.substring(7);
 	}

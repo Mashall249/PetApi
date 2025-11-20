@@ -80,6 +80,14 @@ public class UserController {
 		return ResponseEntity.ok(userService.logout(request, authentication));
 	}
 	
+	@PostMapping("/refresh")
+	public ResponseEntity<?> refreshToken(HttpServletRequest request) {
+		String refreshToken = jwtUtil.extractRefreshTokenFromCookie(request);
+		String newAccessToken = userService.refreshAccessToken(refreshToken);
+		
+		return ResponseEntity.ok(Map.of("accessToken", newAccessToken));
+	}
+	
 	// リフレッシュトークンをCookieとして設定
 	private ResponseCookie refreshTokenSaveAsCookie(LoginResponse loginResponse) {
 		ResponseCookie refreshCookie = ResponseCookie.from("refreshToken", loginResponse.getRefreshToken())

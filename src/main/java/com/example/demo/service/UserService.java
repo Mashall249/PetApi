@@ -14,6 +14,7 @@ import com.example.demo.dto.LoginRequest;
 import com.example.demo.dto.LoginResponse;
 import com.example.demo.dto.UserRequest;
 import com.example.demo.dto.UserResponse;
+import com.example.demo.exception.ForbiddenException;
 import com.example.demo.exception.UnauthorizedException;
 import com.example.demo.jwt.JwtUtil;
 import com.example.demo.redis.RedisService;
@@ -112,6 +113,32 @@ public class UserService {
 
 		return username + "のログアウトが完了しました。トークンは無効化されました。";
 	}
+	
+	// リフレッシュ処理
+	@Transactional
+	public String refreshAccessToken(String refreshToken) {
+
+		if (!jwtUtil.validateRefreshToken(refreshToken)) {
+			throw new UnauthorizedException("リフレッシュトークンが無効です。");
+		}
+		
+		// トークンからusernameを抽出
+		String username = jwtUtil.extractUsername(refreshToken);
+		
+		// Redisの保存されたRefreshTokenを取得
+		String savedToken = redisService.getRefreshToken(username);
+		
+		if (savedToken == null) {
+			throw new UnauthorizedException("リフレッシュトークンが無効化されています。");
+		}
+		
+		// Redisと一致しないトークンの検出
+		if (!savedToken.equals(refreshToken)) {
+			throw new ForbiddenException("不正なリフレッシュトークンです。");
+		}
+		
+		return jwtUtil.generateAccessToken(username);
+	}
 		
 	// Bearerトークン抽出メソッド
 	private String extractToken(HttpServletRequest request) {
@@ -134,4 +161,5 @@ public class UserService {
 			throw new RuntimeException("他のユーザー情報へのアクセスは許可されていません。");
 		}
 	}
+
 }

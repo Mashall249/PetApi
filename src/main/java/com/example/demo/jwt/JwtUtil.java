@@ -4,7 +4,12 @@ import java.security.Key;
 import java.util.Date;
 import java.util.function.Function;
 
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
+
 import org.springframework.stereotype.Component;
+
+import com.example.demo.exception.UnauthorizedException;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
@@ -68,8 +73,18 @@ public class JwtUtil {
 	    return claimsResolver.apply(claims);
 	}
 	
-	// トークンの有効性を検証
-	public boolean validateToken(String token) {
+	// アクセストークンの有効性を検証
+	public boolean validateAccessToken(String token) {
+		try {
+			Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token);
+			return true;
+		} catch (JwtException | IllegalArgumentException e) {
+			return false;
+		}
+	}
+	
+	// リフレッシュトークンの有効性を検証（構造は上と同じ）
+	public boolean validateRefreshToken(String token) {
 		try {
 			Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token);
 			return true;
@@ -93,5 +108,21 @@ public class JwtUtil {
 	public long getExpirationMs(String token) {
 		Date d = getExpirationDate(token);
 		return d != null ? d.getTime() : 0L;
+	}
+
+	// Cookieからリフレッシュトークンを取得
+	public String extractRefreshTokenFromCookie(HttpServletRequest request) {
+		
+		if (request.getCookies() == null) {
+			throw new UnauthorizedException("リフレッシュトークンが存在しません");
+		}
+		
+		for (Cookie cookie : request.getCookies()) {
+			if ("refreshToken".equals(cookie.getName())) {
+				return cookie.getValue();
+			}
+		}
+		
+		throw new UnauthorizedException("リフレッシュトークンが存在しません");
 	}
 }

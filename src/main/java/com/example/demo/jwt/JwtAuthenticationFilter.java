@@ -62,7 +62,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter{
                 UserDetails userDetails = this.userDetailsService.loadUserByUsername(username);
 
                 // トークンが有効時に認証情報を登録
-                if (jwtUtil.validateAccessToken(token)) {
+                if (jwtUtil.validateToken(token)) {
                     UsernamePasswordAuthenticationToken authToken =
                             new UsernamePasswordAuthenticationToken(
                             		userDetails, null, userDetails.getAuthorities());

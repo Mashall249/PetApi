@@ -2,6 +2,7 @@ package com.example.demo.service;
 
 import jakarta.servlet.http.HttpServletRequest;
 
+import org.springframework.http.ResponseCookie;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -14,7 +15,6 @@ import com.example.demo.dto.LoginRequest;
 import com.example.demo.dto.LoginResponse;
 import com.example.demo.dto.UserRequest;
 import com.example.demo.dto.UserResponse;
-import com.example.demo.exception.ForbiddenException;
 import com.example.demo.exception.UnauthorizedException;
 import com.example.demo.jwt.JwtUtil;
 import com.example.demo.redis.RedisService;
@@ -105,43 +105,69 @@ public class UserService {
 	@Transactional
 	public String logout(HttpServletRequest request, Authentication authentication) {
 
-		String token = extractToken(request);
+		String accessToken = extractBearerToken(request);
 		String username = (authentication != null) ? authentication.getName() : "Unknown User";
+		String refreshToken = jwtUtil.extractRefreshTokenFromCookie(request);
 
-		long expiration = jwtUtil.getExpirationDate(token).getTime() - System.currentTimeMillis();
-		redisService.addToBlacklist(token, expiration);
+		// リフレッシュトークンをRedisから削除
+		if (refreshToken != null) {
+			redisService.deleteRefreshToken(username);
+		}
+
+		// アクセストークンのブラックリスト化
+		long expiration = jwtUtil.getExpirationDate(accessToken).getTime() - System.currentTimeMillis();
+		redisService.addToBlacklist(accessToken, expiration);
 
 		return username + "のログアウトが完了しました。トークンは無効化されました。";
 	}
-	
+
 	// リフレッシュ処理
 	@Transactional
-	public String refreshAccessToken(String refreshToken) {
+	public String rotateRefreshToken(HttpServletRequest request) {
 
-		if (!jwtUtil.validateRefreshToken(refreshToken)) {
-			throw new UnauthorizedException("リフレッシュトークンが無効です。");
+		// Cookieからリフレッシュトークンを取得
+		String oldRefreshToken = jwtUtil.extractRefreshTokenFromCookie(request);
+		if (oldRefreshToken == null) {
+			throw new UnauthorizedException("リフレッシュトークンがありません。");
 		}
 		
-		// トークンからusernameを抽出
-		String username = jwtUtil.extractUsername(refreshToken);
+		// リフレッシュトークンの有効性チェック
+		String username = jwtUtil.extractUsername(oldRefreshToken);
 		
-		// Redisの保存されたRefreshTokenを取得
+		// Redis二保存されているリフレッシュトークンと一致するか
 		String savedToken = redisService.getRefreshToken(username);
-		
-		if (savedToken == null) {
-			throw new UnauthorizedException("リフレッシュトークンが無効化されています。");
+		if(!oldRefreshToken.equals(savedToken)) {
+			throw new UnauthorizedException("リフレッシュトークンが無効です（ローテーション済みの可能性あり）。");
 		}
 		
-		// Redisと一致しないトークンの検出
-		if (!savedToken.equals(refreshToken)) {
-			throw new ForbiddenException("不正なリフレッシュトークンです。");
-		}
+		// 古いリフレッシュトークンを削除
+		redisService.deleteRefreshToken(username);
 		
-		return jwtUtil.generateAccessToken(username);
+		// 新しいリフレッシュトークンを取得
+		String newRefreshToken = jwtUtil.generateRefreshToken(username);
+		
+		// Redisに保存
+		redisService.saveRefreshToken(username, newRefreshToken, jwtUtil.getExpirationMs());
+		
+		// 新しいアクセストークンを生成
+		String newAccessToken = jwtUtil.generateAccessToken(username);
+		
+		// リフレッシュトークンを再Cookie化
+		ResponseCookie remakeCookie = ResponseCookie.from("refreshToken", newRefreshToken)
+				.httpOnly(true)
+				.secure(false)
+				.sameSite("None")
+				.path("/")
+				.maxAge(jwtUtil.getExpirationMs() / 1000)
+				.build();
+		
+		request.setAttribute("Set-Cookie", remakeCookie.toString());
+		
+		return newAccessToken;
 	}
 		
-	// Bearerトークン抽出メソッド
-	private String extractToken(HttpServletRequest request) {
+	// Bearerトークンを抽出
+	private String extractBearerToken(HttpServletRequest request) {
 		String authHeader = request.getHeader("Authorization");
 
 		if (authHeader == null || !authHeader.startsWith("Bearer ")) {
@@ -150,6 +176,7 @@ public class UserService {
 		}
 		return authHeader.substring(7);
 	}
+	
 		
 	// ユーザーチェック
 	private void validateUserAccess(String username, Authentication authentication) {
@@ -161,5 +188,4 @@ public class UserService {
 			throw new RuntimeException("他のユーザー情報へのアクセスは許可されていません。");
 		}
 	}
-
 }

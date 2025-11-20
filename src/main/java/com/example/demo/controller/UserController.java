@@ -77,15 +77,15 @@ public class UserController {
 	// ログアウト処理
 	@PostMapping("/logout")
 	public ResponseEntity<?> logoutUser(HttpServletRequest request, Authentication authentication) {
-		return ResponseEntity.ok(userService.logout(request, authentication));
+		String logoutResponse = userService.logout(request, authentication);
+		return ResponseEntity.ok(logoutResponse);
 	}
 	
 	@PostMapping("/refresh")
 	public ResponseEntity<?> refreshToken(HttpServletRequest request) {
-		String refreshToken = jwtUtil.extractRefreshTokenFromCookie(request);
-		String newAccessToken = userService.refreshAccessToken(refreshToken);
+		String newAccessToken = userService.rotateRefreshToken(request);
 		
-		return ResponseEntity.ok(Map.of("accessToken", newAccessToken));
+		return ResponseEntity.ok().body(newAccessToken);
 	}
 	
 	// リフレッシュトークンをCookieとして設定

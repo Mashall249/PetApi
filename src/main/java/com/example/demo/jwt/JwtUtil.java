@@ -9,8 +9,6 @@ import jakarta.servlet.http.HttpServletRequest;
 
 import org.springframework.stereotype.Component;
 
-import com.example.demo.exception.UnauthorizedException;
-
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
@@ -73,18 +71,8 @@ public class JwtUtil {
 	    return claimsResolver.apply(claims);
 	}
 	
-	// アクセストークンの有効性を検証
-	public boolean validateAccessToken(String token) {
-		try {
-			Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token);
-			return true;
-		} catch (JwtException | IllegalArgumentException e) {
-			return false;
-		}
-	}
-	
-	// リフレッシュトークンの有効性を検証（構造は上と同じ）
-	public boolean validateRefreshToken(String token) {
+	// トークンの有効性を検証
+	public boolean validateToken(String token) {
 		try {
 			Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token);
 			return true;
@@ -112,17 +100,14 @@ public class JwtUtil {
 
 	// Cookieからリフレッシュトークンを取得
 	public String extractRefreshTokenFromCookie(HttpServletRequest request) {
-		
-		if (request.getCookies() == null) {
-			throw new UnauthorizedException("リフレッシュトークンが存在しません");
-		}
-		
-		for (Cookie cookie : request.getCookies()) {
+		Cookie[] cookies = request.getCookies();
+		if (cookies == null) return null;
+
+		for (Cookie cookie : cookies) {
 			if ("refreshToken".equals(cookie.getName())) {
 				return cookie.getValue();
 			}
 		}
-		
-		throw new UnauthorizedException("リフレッシュトークンが存在しません");
+		return null;
 	}
 }

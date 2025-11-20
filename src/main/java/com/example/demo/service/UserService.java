@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.example.demo.dto.LoginRequest;
+import com.example.demo.dto.LoginResponse;
 import com.example.demo.dto.UserRequest;
 import com.example.demo.dto.UserResponse;
 import com.example.demo.exception.UnauthorizedException;
@@ -79,16 +80,24 @@ public class UserService {
 		
 	// ログイン処理
 	@Transactional
-	public String login(LoginRequest loginRequest) {
+	public LoginResponse login(LoginRequest loginRequest) {
 
+		// ユーザー認証
 		Authentication auth = authenticationManager.authenticate(
 			new UsernamePasswordAuthenticationToken(loginRequest.getUsername(), loginRequest.getPassword())
 		);
 
 		UserDetails userDetails = (UserDetails) auth.getPrincipal();
+		String username = userDetails.getUsername();
 
-		// トークンを生成して返却
-		return jwtUtil.generateToken(userDetails.getUsername());
+		// アクセストークン・リフレッシュトークン生成
+		String accessToken = jwtUtil.generateAccessToken(username);
+		String refreshToken = jwtUtil.generateRefreshToken(username);
+		
+		// リフレッシュトークンをRedisに保存
+		redisService.saveRefreshToken(username, refreshToken, jwtUtil.getExpirationMs());
+		
+		return new LoginResponse(accessToken, refreshToken, username);
 	}
 		
 	// ログアウト処理

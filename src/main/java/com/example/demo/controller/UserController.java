@@ -1,8 +1,12 @@
 package com.example.demo.controller;
 
+import java.util.Map;
+
 import jakarta.servlet.http.HttpServletRequest;
 
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -15,7 +19,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.demo.dto.LoginRequest;
+import com.example.demo.dto.LoginResponse;
 import com.example.demo.dto.UserRequest;
+import com.example.demo.jwt.JwtUtil;
 import com.example.demo.service.UserService;
 
 import lombok.RequiredArgsConstructor;
@@ -26,6 +32,7 @@ import lombok.RequiredArgsConstructor;
 public class UserController {
 	
 	private final UserService userService;
+	private final JwtUtil jwtUtil;
 	
 	// ユーザー参照
 	@GetMapping("/{username}")
@@ -55,12 +62,32 @@ public class UserController {
 	// ログイン処理
 	@PostMapping("/login")
 	public ResponseEntity<?> loginUser(@RequestBody LoginRequest loginRequest) {
-		return ResponseEntity.ok(userService.login(loginRequest));
+		LoginResponse loginResponse = userService.login(loginRequest);
+		
+		ResponseCookie refreshCookie = refreshTokenSaveAsCookie(loginResponse);
+		
+		return ResponseEntity.ok()
+				.header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
+				.body(Map.of(
+						"accessToken", loginResponse.getAccessToken(),
+						"username", loginResponse.getUsername()
+				));
 	}
-	
+
 	// ログアウト処理
 	@PostMapping("/logout")
 	public ResponseEntity<?> logoutUser(HttpServletRequest request, Authentication authentication) {
 		return ResponseEntity.ok(userService.logout(request, authentication));
+	}
+	
+	// リフレッシュトークンをCookieとして設定
+	private ResponseCookie refreshTokenSaveAsCookie(LoginResponse loginResponse) {
+		ResponseCookie refreshCookie = ResponseCookie.from("refreshToken", loginResponse.getRefreshToken())
+				.httpOnly(true)
+				.secure(false)
+				.path("/")
+				.maxAge(jwtUtil.getExpirationMs() / 1000)
+				.build();
+		return refreshCookie;
 	}
 }
